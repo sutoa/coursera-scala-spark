@@ -1,0 +1,15 @@
+Questions
+
+Do you think that partitioning your data would help?
+no. as we don't know what points fall within the same cluster ???
+
+Have you thought about persisting some of your data? Can you think of why persisting your data in memory may be helpful for this algorithm?
+Yes. Otherwise, it slows down kmean calc tremandously
+
+Of the non-empty clusters, how many clusters have "Java" as their label (based on the majority of questions, see above)? Why?
+2. different scores
+Only considering the "Java clusters", which clusters stand out and why?
+the one with score 1
+
+How are the "C# clusters" different compared to the "Java clusters"?
+higer scores but fewer postings
