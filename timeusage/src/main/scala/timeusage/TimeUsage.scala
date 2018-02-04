@@ -3,14 +3,13 @@ package timeusage
 import java.nio.file.Paths
 
 import org.apache.spark.sql._
-import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 
 /** Main class */
 object TimeUsage {
 
   import org.apache.spark.sql.SparkSession
-  import org.apache.spark.sql.functions._
 
   val spark: SparkSession =
     SparkSession
@@ -75,7 +74,7 @@ object TimeUsage {
     * @param line Raw fields
     */
   def row(line: List[String]): Row = {
-      Row.fromSeq(line)
+      Row.fromSeq(line.head.toString :: line.tail.map(s => s.toDouble))
     }
 
   /** @return The initial data frame columns partitioned in three groups: primary needs (sleeping, eating, etc.),
@@ -94,7 +93,29 @@ object TimeUsage {
     *    “t10”, “t12”, “t13”, “t14”, “t15”, “t16” and “t18” (those which are not part of the previous groups only).
     */
   def classifiedColumns(columnNames: List[String]): (List[Column], List[Column], List[Column]) = {
-    ???
+    val buckets = List(
+      List("t01", "t03", "t11", "t1801", "t1803"),
+      List("t05", "t1805"),
+      List("t02", "t04", "t06", "t07", "t08", "t09", "t10", "t12", "t13", "t14", "t15", "t16", "t18")
+    ).zipWithIndex
+
+    val bucketedColumns = columnNames.foldLeft(List.empty[(Int, Column)])((acc, name) => {
+      buckets.flatMap {
+        case (prefixs, idx) if prefixs.exists(p => name.startsWith(p)) => Some((idx, new Column(name)))
+        case _ => None
+      }
+        .sortBy(_._1)
+        .headOption match {
+        case Some(tuple) => tuple :: acc
+        case None => acc
+      }
+    })
+      .groupBy(_._1)
+      .mapValues(v => v.map(_._2))
+    val results = (0 to 2).map(i => bucketedColumns.getOrElse(i, List.empty[Column]))
+    (results(0), results(1), results(2))
+    
+
   }
 
   /** @return a projection of the initial DataFrame such that all columns containing hours spent on primary needs
@@ -137,17 +158,27 @@ object TimeUsage {
     // more sense for our use case
     // Hint: you can use the `when` and `otherwise` Spark functions
     // Hint: don’t forget to give your columns the expected name with the `as` method
-    val workingStatusProjection: Column = ???
-    val sexProjection: Column = ???
-    val ageProjection: Column = ???
+    val workingStatusProjection: Column =
+      when('telfs >= 1 && 'telfs < 3, "working")
+      .otherwise("not working").as("workingStatus")
+    
+    val sexProjection: Column =
+      when('tesex === 1, "male")
+      .otherwise("female").as("gender")
+
+    val ageProjection: Column =
+      when('teage.between(15, 22), "young")
+      .when('teage.between(23, 55), "active")
+      .otherwise("elder").as("age")
 
     // Create columns that sum columns of the initial dataset
     // Hint: you want to create a complex column expression that sums other columns
     //       by using the `+` operator between them
     // Hint: don’t forget to convert the value to hours
-    val primaryNeedsProjection: Column = ???
-    val workProjection: Column = ???
-    val otherProjection: Column = ???
+
+    val primaryNeedsProjection: Column = primaryNeedsColumns.reduce(_ + _).divide(60).as("primaryNeeds")
+    val workProjection: Column = workColumns.reduce(_ + _).divide(60).as("workNeeds")
+    val otherProjection: Column = otherColumns.reduce(_ + _).divide(60).as("otherNeeds")
     df
       .select(workingStatusProjection, sexProjection, ageProjection, primaryNeedsProjection, workProjection, otherProjection)
       .where($"telfs" <= 4) // Discard people who are not in labor force
@@ -212,7 +243,6 @@ object TimeUsage {
     * Hint: you should use the `groupByKey` and `typed.avg` methods.
     */
   def timeUsageGroupedTyped(summed: Dataset[TimeUsageRow]): Dataset[TimeUsageRow] = {
-    import org.apache.spark.sql.expressions.scalalang.typed
     ???
   }
 }
