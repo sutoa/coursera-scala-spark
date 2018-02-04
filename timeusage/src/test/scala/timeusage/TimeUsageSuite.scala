@@ -122,7 +122,8 @@ class TimeUsageSuite extends FunSuite with BeforeAndAfterAll {
       .agg(
         sum(_.qty)
       )
-      .show()
+      // the grouped column is named 'value', how do i give it an alias?
+      .orderBy($"value".desc).show()
 
   }
 }
