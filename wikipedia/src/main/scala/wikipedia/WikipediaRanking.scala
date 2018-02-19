@@ -27,15 +27,17 @@ object WikipediaRanking {
    *  Hint2: consider using method `mentionsLanguage` on `WikipediaArticle`
    */
   def occurrencesOfLang(lang: String, rdd: RDD[WikipediaArticle]): Int = {
-    rdd.aggregate(0)((acc, article) => {
-      article.mentionsLanguage(lang) match {
-        case true => acc + 1
-        case false => acc
-      }
-    }, (acc1, acc2) => acc1 + acc2)
+//    rdd.aggregate(0)((acc, article) => {
+//      article.mentionsLanguage(lang) match {
+//        case true => acc + 1
+//        case false => acc
+//      }
+//    }, (acc1, acc2) => acc1 + acc2)
 
-    // below using count is faster than the aggregate function above when running main, why use aggregate?
-    // rdd.filter(_.mentionsLanguage(lang)).count().toInt
+    // the 2 lines below, filtering first and then count is faster than the above
+//     rdd.filter(_.mentionsLanguage(lang)).count().toInt
+     println(rdd.filter(_.mentionsLanguage(lang)).toDebugString)
+     rdd.filter(_.mentionsLanguage(lang)).aggregate(0)((acc: Int, article) => acc + 1, _ + _)
   }
 
   /* (1) Use `occurrencesOfLang` to compute the ranking of the languages
@@ -55,6 +57,7 @@ object WikipediaRanking {
    * to the Wikipedia pages in which it occurs.
    */
   def makeIndex(langs: List[String], rdd: RDD[WikipediaArticle]): RDD[(String, Iterable[WikipediaArticle])] = {
+    println(rdd.flatMap(a => langs.filter(l => a.mentionsLanguage(l)).map(l => (l, a))).groupByKey().toDebugString)
     rdd.flatMap(a => langs.filter(l => a.mentionsLanguage(l)).map(l => (l, a))).groupByKey()
 
   }
@@ -66,7 +69,7 @@ object WikipediaRanking {
    *   several seconds.
    */
   def rankLangsUsingIndex(index: RDD[(String, Iterable[WikipediaArticle])]): List[(String, Int)] = {
-    println(index.mapValues(_.size).sortBy(_._2, false).toDebugString)
+//    println(index.mapValues(_.size).sortBy(_._2, false).toDebugString)
     index.mapValues(_.size).sortBy(_._2, false).collect().toList
   }
 
@@ -78,8 +81,11 @@ object WikipediaRanking {
    *   several seconds.
    */
   def rankLangsReduceByKey(langs: List[String], rdd: RDD[WikipediaArticle]): List[(String, Int)] = {
-    println (rdd.flatMap(a => langs.filter(l => a.mentionsLanguage(l)).map(l => (l, 1)))
-      .reduceByKey(_ + _).sortBy(_._2, false).toDebugString )
+    println (
+      rdd.flatMap(a => langs.filter(l => a.mentionsLanguage(l)).map(l => (l, 1)))
+      .reduceByKey(_ + _)
+        .sortBy(_._2, false)
+        .toDebugString )
     rdd.flatMap(a => langs.filter(l => a.mentionsLanguage(l)).map(l => (l, 1)))
       .reduceByKey(_ + _).sortBy(_._2, false).collect().toList
   }

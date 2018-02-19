@@ -1,0 +1,21 @@
+
+Scala-Spark Week 1
+1. filter rdd first then count or aggregate the count is faster than aggregating the rdd and use the SeqOp function to filter
+2. did not see an advantage of using the rdd.aggregate function over the rdd.count function. which one is better?
+3. Best performance - reduceByKey - fastest because it shuffles count instead of widipedia data
+
+(1) MapPartitionsRDD[30] at sortBy at WikipediaRanking.scala:87 []
+ |  ShuffledRDD[29] at sortBy at WikipediaRanking.scala:87 []
+ +-(1) MapPartitionsRDD[28] at sortBy at WikipediaRanking.scala:87 []
+    |  ShuffledRDD[27] at reduceByKey at WikipediaRanking.scala:86 []
+    +-(1) MapPartitionsRDD[26] at flatMap at WikipediaRanking.scala:85 []
+       |  ParallelCollectionRDD[25] at parallelize at WikipediaSuite.scala:104 []
+
+4. next to best - using index - slower because it has to shuffle the actual wikipedia data
+(1) ShuffledRDD[18] at groupByKey at WikipediaRanking.scala:60 []
+ +-(1) MapPartitionsRDD[17] at flatMap at WikipediaRanking.scala:60 []
+    |  ParallelCollectionRDD[16] at parallelize at WikipediaSuite.scala:86 []
+
+5. worst performance - has to do the following for EVERY language
+(1) MapPartitionsRDD[7] at filter at WikipediaRanking.scala:39 []
+ |  ParallelCollectionRDD[6] at parallelize at WikipediaSuite.scala:56 []
